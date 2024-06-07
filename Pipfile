@@ -6,8 +6,10 @@ name = "pypi"
 [packages]
 python-dotenv = "*"
 wasabi = "*"
+roboflow = "*"
 
 [dev-packages]
+ipykernel = "*"
 
 [requires]
 python_version = "3.11"

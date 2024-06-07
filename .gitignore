@@ -21,4 +21,4 @@ node_modules/
 bower_components/
 
 # dataset files 
-data/dataset/** */
+data/datasets/**

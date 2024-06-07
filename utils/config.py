@@ -22,10 +22,9 @@ class Config:
 config = Config()
 
 if __name__ == "__main__":
-    print(f"Roboflow API Key: {config.roboflow_api_key}")
     try:
         if config.validate():
-            print("Configuración válida")
+            msg.good("Configuración válida")
     except ValueError as e:
-        print(e)
+        msg.fail(e)
         raise ValueError("Configuración inválida")
