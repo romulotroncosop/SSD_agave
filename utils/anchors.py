@@ -5,18 +5,15 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.patheffects as PathEffects
 from PIL import Image
-from pathlib import Path
 
 class AnchorUtils:
     @staticmethod
     def norm(bb, shape):
-        # Normalize bounding box
         h, w = shape
         return np.array([bb[0]/w, bb[1]/h, bb[2]/w, bb[3]/h])
 
     @staticmethod
     def unnorm(bb, shape):
-        # Unnormalize bounding box
         h, w = shape
         return np.array([bb[0]*w, bb[1]*h, bb[2]*w, bb[3]*h])
 
@@ -26,19 +23,18 @@ class AnchorUtils:
 
     @staticmethod
     def generate_anchors(scales, centers, sizes):
-        k, anchors, grid_size = [], [], []
+        anchors = []
+        grid_size = []
         for s in scales:
-            cnt = 0
             for (x, y) in centers:
                 for (w, h) in sizes:
                     for i in range(s):
                         for j in range(s):
-                            # xyxy format
-                            anchors.append(np.array([x+i-w/2, y+j-h/2, x+i+w/2, y+j+h/2])/s)
-                            grid_size.append(np.array([1./s, 1./s]))
-                    cnt += 1
-            k.append(cnt)
-        return k, torch.tensor(anchors).float(), torch.tensor(grid_size).float()
+                            anchors.append(np.array([x + i - w / 2, y + j - h / 2, x + i + w / 2, y + j + h / 2]) / s)
+                            grid_size.append(np.array([1. / s, 1. / s]))
+        anchors = np.array(anchors)  # Convert list of ndarrays to a single ndarray
+        grid_size = np.array(grid_size)  # Convert list of ndarrays to a single ndarray
+        return torch.tensor(anchors).float(), torch.tensor(grid_size).float()
 
     @staticmethod
     def plot_anchors(img, anns, anchors, classes, ax=None, overlap=False):
