@@ -8,6 +8,7 @@ from utils.agave_dataset import AgaveDataset, get_transform
 from utils.ssd_model import SSD
 from utils.ssd_loss import SSDLoss
 from utils.anchors import AnchorUtils
+import numpy as np
 
 # Configuración del dispositivo
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,7 +19,7 @@ centers = [(0.5, 0.5)]
 size_scales = [0.5]
 aspect_ratios = [(1., 1.), (1.5, 0.8), (1.8, 0.4)]
 sizes = [(s * a[0], s * a[1]) for s in size_scales for a in aspect_ratios]
-anchors, grid_size = AnchorUtils.generate_anchors(scales, centers, sizes)
+k, anchors, grid_size = AnchorUtils.generate_anchors(scales, centers, sizes)
 
 # Transformaciones de las imágenes
 trans = A.Compose([
@@ -29,7 +30,7 @@ trans = A.Compose([
 def fit(model, X, target, epochs=1, lr=3e-4):
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = SSDLoss(anchors, grid_size)
+    criterion = SSDLoss(anchors.to(device), grid_size.to(device))
     for epoch in range(1, epochs+1):
         model.train()
         train_loss_loc, train_loss_cls = [], []
@@ -76,6 +77,14 @@ if __name__ == "__main__":
     bb_tensor = torch.FloatTensor(bbs).unsqueeze(0).to(device)
     label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
 
+    print("Imagen Tensor Shape:", img_tensor.shape)
+    print("Cajas Tensor Shape:", bb_tensor.shape)
+    print("Etiquetas Tensor Shape:", label_tensor.shape)
+
     # Inicializar y entrenar el modelo
-    model = SSD(n_classes=len(classes), k=[1, 1, 1])
+    model = SSD(n_classes=len(classes), k=k)
     fit(model, img_tensor, (bb_tensor, label_tensor), epochs=100)
+
+    # Guardar el modelo
+    torch.save(model.state_dict(), 'ssd_model.pth')
+    print("Modelo guardado exitosamente.")

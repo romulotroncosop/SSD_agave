@@ -29,7 +29,7 @@ class SSDLoss(nn.Module):
         tar_bbs, c_t = target
         loc_loss, clas_loss = 0, 0
         for pred_bb, pred_c, tar_bb, tar_c in zip(pred_bbs, pred_cs, tar_bbs, c_t):
-            labels = torch.zeros(len(self.anchors)).long()
+            labels = torch.zeros(len(self.anchors), device=pred_bb.device).long()
             if tar_bb.shape[0] != 0:
                 overlaps = torchvision.ops.box_iou(tar_bb, self.anchors)
                 gt_overlap, gt_idx = map_to_ground_truth(overlaps)
