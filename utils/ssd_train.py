@@ -87,4 +87,4 @@ if __name__ == "__main__":
 
     # Guardar el modelo
     torch.save(model.state_dict(), 'ssd_model.pth')
-    print("Modelo guardado exitosamente.")
+    print(f"modelo guardadon en {'ssd_model.pth'}, con k={k}")
