@@ -58,16 +58,16 @@ if __name__ == "__main__":
     # Normalizar las cajas
     bbs = [AnchorUtils.norm(bb, img_np.shape[:2]) for bb in bbs]
     print("Labels:", labels)
-    labels = [int(label) for label in labels]
+    # Asegurarse de que todas las etiquetas son 0 (background) o 1 (agave)
+    labels = [0 if label != 1 else 1 for label in labels]
 
     # Aplicar albumentations
     augmented = trans(**{'image': img_np / 255.0, 'bboxes': bbs, 'labels': labels})
 
     img, bbs, labels = augmented['image'], augmented['bboxes'], augmented['labels']
 
-    
     # Visualizar anclas
-    classes = ["agave"]
+    classes = ["background", "agave"]
     AnchorUtils.plot_anchors(img, (labels, bbs), anchors, classes)
     plt.show()
 
@@ -77,5 +77,5 @@ if __name__ == "__main__":
     label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
 
     # Inicializar y entrenar el modelo
-    model = SSD(n_classes=len(["agave"]), k=[1, 1, 1])
+    model = SSD(n_classes=len(classes), k=[1, 1, 1])
     fit(model, img_tensor, (bb_tensor, label_tensor), epochs=100)
