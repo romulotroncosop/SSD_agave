@@ -1,5 +1,6 @@
 #%%
 # utils/infer.py
+#%%
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -17,7 +18,7 @@ model.to(device)
 model.eval()
 
 # Ruta de la imagen de prueba
-#image_path = 'data/datasets/agaveHD-1/valid/DSC00655_geotag_2_jpg.rf.8794a33103e84fc6f2d09ace90af7a7b.jpg'
+# Puedes cambiar esta ruta a cualquier imagen con la que se haya entrenado
 image_path = 'data/datasets/agaveHD-1/train/DSC00634_geotag_1_jpg.rf.5b889e1201646bf64789d5b4ca3b1a88.jpg'
 
 # Cargar y transformar la imagen
