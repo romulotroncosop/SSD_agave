@@ -7,7 +7,9 @@ import torchvision.transforms as T
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib import patheffects as PathEffects
 
+classes = ["background", "agave"]
 class AgaveDataset(VisionDataset):
     def __init__(self, root, image_set='train', transform=None):
         super(AgaveDataset, self).__init__(root, transform=transform)
@@ -92,3 +94,17 @@ def show_image(img_tensor, boxes, labels):
         ax.add_patch(rect)
 
     plt.show()
+
+def plot_anns(img, anns, ax=None, bg=-1):
+    if not ax:
+        fig, ax = plt.subplots(figsize=(10, 6))
+    ax.imshow(img)
+    labels, bbs = anns
+    for lab, bb in zip(labels, bbs):
+        if bg == -1 or lab != bg:
+            x, y, xm, ym = bb
+            w, h = xm - x, ym - y
+            rect = patches.Rectangle((x, y), w, h, fill=False, edgecolor='red', linewidth=2)
+            text = ax.text(x, y - 10, classes[lab], {'color': 'red'})
+            text.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
+            ax.add_patch(rect)

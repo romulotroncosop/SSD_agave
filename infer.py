@@ -1,49 +1,115 @@
-#%%
-# utils/infer.py
-#%%
-import torch
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from PIL import Image
-import torchvision.transforms as T
+#%% Load dataset and annotations
+from utils.agave_dataset import AgaveDataset, get_transform, get_sample, classes, plot_anns
+from utils.anchors import AnchorUtils
+from utils.ssd_loss import actn_to_bb
+from utils.ssd_train import fit
 from utils.ssd_model import SSD
+from utils.ssd_loss import SSDLoss
+import numpy as np
+import matplotlib.pyplot as plt
+import torch, torchvision
+import albumentations as A
 
-# Configuración del dispositivo
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Dataset and annotations
+dataset = AgaveDataset(root='./data/datasets/agaveHD-1', image_set='train', transform=get_transform(train=False))
+idx = 6
+img_np, anns = get_sample(dataset, idx)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Inicializar y cargar el modelo
-model = SSD(n_classes=2, k=[3, 3, 3]).to(device)
-model.load_state_dict(torch.load('ssd_model.pth', map_location=device))
+#  Anchors
+scales = [6, 3, 1]
+centers = [(0.5, 0.5)] 
+size_scales = [0.5]
+aspect_ratios = [(1., 1.), (1.5, 0.8), (1.8, 0.4)]
+
+sizes = [(s * a[0], s * a[1]) for s in size_scales for a in aspect_ratios]
+
+k, anchors, grid_size = AnchorUtils.generate_anchors(scales, centers, sizes)
+anchors = anchors.to(device)
+grid_size = grid_size.to(device)
+
+AnchorUtils.plot_anchors(img_np, anns, anchors, ["background", "agave"])
+plt.show()
+print(f"Anchors: {len(anchors)}, k: {k}")
+
+# Model
+n_classes = 2  # Para 'background' y 'agave'
+k_values = [3, 3, 3]
+
+net = SSD(n_classes=n_classes, k=k_values).to(device)
+input_tensor = torch.rand((64, 3, 100, 100)).to(device)
+
+output = net(input_tensor)
+print(output[0].shape, output[1].shape) # -> target: torch.Size([64, 138, 4]) torch.Size([64, 138, 2])
+
+
+# Loss (SSDLoss)
+criterion = SSDLoss(
+    anchors=anchors,
+    grid_size=grid_size,
+    threshold=0.4,
+)
+
+targets = (torch.rand((64, 5, 4)).to(device), torch.randint(0, n_classes, (64, 5)).to(device))
+loss = criterion(output, targets)
+print(f"Loss: {loss.item()}")
+
+# Transformations
+trans = A.Compose([
+    A.Resize(100, 100)
+], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
+
+labels, bbs = anns
+bb_norm = [AnchorUtils.norm(bb, img_np.shape[:2]) for bb in bbs]
+augmented = trans(**{'image': img_np, 'bboxes': bb_norm, 'labels': labels})
+img, bbs, labels = augmented['image'], augmented['bboxes'], augmented['labels']
+
+img_tensor = torch.FloatTensor(img / 255.).permute(2,0,1).unsqueeze(0).to(device)
+bb_norm = [AnchorUtils.norm(bb, img.shape[:2]) for bb in bbs]
+bb_tensor = torch.FloatTensor(bb_norm).unsqueeze(0).to(device)
+label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
+
+# Training the model
+
+model = SSD(n_classes = len(classes), k=k)
 model.to(device)
-model.eval()
+fit(net, img_tensor, (bb_tensor, label_tensor), epochs=500)
+# Prediction function
+def predict(model, X):
+    model.eval()
+    with torch.no_grad():
+        X = X.to(device)
+        bbs, labels = model(X)
+        bbs = actn_to_bb(bbs[0], anchors, grid_size)
+    return bbs, torch.max(torch.softmax(labels, axis=2)[0].cpu(), axis=1)  # Asegúrate de que las etiquetas estén en la CPU
 
-# Ruta de la imagen de prueba
-# Puedes cambiar esta ruta a cualquier imagen con la que se haya entrenado
-image_path = 'data/datasets/agaveHD-1/train/DSC00634_geotag_1_jpg.rf.5b889e1201646bf64789d5b4ca3b1a88.jpg'
+bbs, (scores, labels) = predict(model, img_tensor)
+bbs = [AnchorUtils.unnorm(bb.cpu().numpy(), img.shape[:2]) for bb in bbs]
+#%%
+# Plotting predictions
+plot_anns(img, (labels, bbs))
+plt.show()
+#%%
+plot_anns(img, (labels, bbs), bg=0)
+plt.show()
+#%%
+bbs, (scores, labels) = predict(model, img_tensor)
 
-# Cargar y transformar la imagen
-img = Image.open(image_path).convert("RGB")
-transform = T.Compose([
-    T.Resize((100, 100)),
-    T.ToTensor()
-])
-img_tensor = transform(img).unsqueeze(0).to(device)
+# Filtrar los valores
+mask = labels > 0
+bbs = bbs[mask]
+labels = labels[mask]
+scores = scores[mask]
 
-# Inferencia
-with torch.no_grad():
-    pred_bboxes, pred_classes = model(img_tensor)
+# Mover los tensores filtrados a CUDA
+bbs = bbs.to(device)
+labels = labels.to(device)
+scores = scores.to(device)
 
-# Mover tensores a la CPU y convertir a numpy
-pred_bboxes = pred_bboxes.cpu().numpy()
-pred_classes = pred_classes.cpu().numpy()
+nms_ixs = torchvision.ops.nms(bbs, scores, iou_threshold=0.8)
 
-# Visualización
-fig, ax = plt.subplots(1)
-ax.imshow(img)
-
-for bbox, cls in zip(pred_bboxes[0], pred_classes[0]):
-    rect = patches.Rectangle((bbox[0], bbox[1]), bbox[2]-bbox[0], bbox[3]-bbox[1], linewidth=1, edgecolor='r', facecolor='none')
-    ax.add_patch(rect)
-    ax.text(bbox[0], bbox[1], f'cls {int(cls[0])}', color='r')  # Asegúrate de extraer el primer elemento de cls
-
+#%%
+bbs, labels = bbs[nms_ixs], labels[nms_ixs]
+bbs = [AnchorUtils.unnorm(bb.cpu(), img.shape[:2]) for bb in bbs]  # Mueve los tensores a la CPU antes de la conversión
+plot_anns(img, (labels.cpu(), bbs))  # Mueve las etiquetas a la CPU también
 plt.show()
