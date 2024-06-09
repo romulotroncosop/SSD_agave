@@ -27,16 +27,16 @@ trans = A.Compose([
 ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
 
 # Función de entrenamiento
-def fit(model, X, target, epochs=1, lr=3e-4):
+def fit(model, X, target, epochs=1, lr=1e-4):
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = SSDLoss(anchors, grid_size)
+    criterion = SSDLoss(anchors.to(device), grid_size.to(device))
     for epoch in range(1, epochs+1):
         model.train()
         train_loss_loc, train_loss_cls = [], []
         optimizer.zero_grad()
-        outputs = model(X)
-        loss = criterion(outputs, target)
+        outputs = model(X.to(device))
+        loss = criterion(outputs, (target[0].to(device), target[1].to(device)))
         loss.backward()
         optimizer.step()
         train_loss_loc.append(loss.item())
