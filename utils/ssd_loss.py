@@ -4,8 +4,8 @@ import torchvision
 
 def actn_to_bb(actn, anchors, grid_size):
     actn_bbs = torch.tanh(actn)
-    actn_p1 = anchors[:,:2] + actn_bbs[:,:2]*grid_size*0.5
-    actn_p2 = anchors[:,2:] + actn_bbs[:,2:]*grid_size*0.5
+    actn_p1 = anchors[:, :2] + actn_bbs[:, :2] * grid_size * 0.5
+    actn_p2 = anchors[:, 2:] + actn_bbs[:, 2:] * grid_size * 0.5
     return torch.cat([actn_p1, actn_p2], dim=1)
 
 def map_to_ground_truth(overlaps):

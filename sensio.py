@@ -3,11 +3,15 @@
 from utils.voc_dataset import get_sample, plot_anns
 from utils.voc_dataset import classes
 from utils.anchors import AnchorUtils
+from utils.ssd_loss import actn_to_bb
+from utils.ssd_train import fit
+import albumentations as A
 from utils.ssd_model import SSD
 from utils.ssd_loss import SSDLoss
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import albumentations as A
 
 # Dataset and annotations
 idx = 4445
@@ -52,57 +56,60 @@ criterion = SSDLoss(
 )
 
 targets = (torch.rand((64, 5, 4)).to(device), torch.randint(0, n_classes, (64, 5)).to(device))
-#%%
 loss = criterion(output, targets)
 print(f"Loss: {loss.item()}")
 
-#%% Training the model
-import albumentations as A
-from utils.anchors import AnchorUtils
+#%%
+# TODO: Fix the plot on the bbs, seems to be not unnormalized correctly to 100 x 100 target
+#trans = A.Compose([
+#    A.Resize(100, 100)
+#], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#labels, bbs = anns
+#augmented = trans(**{'image': img_np, 'bboxes': bbs, 'labels': labels})
+#img, bbs, labels = augmented['image'], augmented['bboxes'], augmented['labels']
+#bbs_normalized = [AnchorUtils.norm(bb, img_np.shape[:2]) for bb in bbs]
+#augmented = trans(image=img_np, bboxes=bbs_normalized, labels=labels)
+#img, bbs_aug, labels_aug = augmented['image'], augmented['bboxes'], augmented['labels']
+#bbs = [AnchorUtils.unnorm(bb, img_np.shape[:2]) for bb in bbs_aug]
+#AnchorUtils.plot_anchors(img, (labels_aug, bbs), anchors, classes)
+#plt.show()
 
+
+#%% TODO: fix the tensors, are not in the the same device
 trans = A.Compose([
     A.Resize(100, 100)
 ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
 
-img_np, anns = get_sample(idx)
 labels, bbs = anns
+augmented = trans(**{'image': img_np, 'bboxes': bbs, 'labels': labels})
+img, bbs, labels = augmented['image'], augmented['bboxes'], augmented['labels']
 
-bbs_normalized = [AnchorUtils.norm(bb, img_np.shape[:2]) for bb in bbs]
 
-augmented = trans(image=img_np, bboxes=bbs_normalized, labels=labels)
-img, bbs_aug, labels_aug = augmented['image'], augmented['bboxes'], augmented['labels']
-
-bbs = [AnchorUtils.unnorm(bb, img.shape[:2]) for bb in bbs_aug]
-
-img_tensor = torch.FloatTensor(img / 255.).permute(2, 0, 1).unsqueeze(0).to(device)
-bb_tensor = torch.FloatTensor(bbs).unsqueeze(0).to(device)
-label_tensor = torch.tensor(labels_aug).long().unsqueeze(0).to(device)
-
-print("Shapes de los tensores:", img_tensor.shape, bb_tensor.shape, label_tensor.shape)
-
-n_classes = len(classes)
-k_values = [3, 3, 3]
-
-net = SSD(n_classes=n_classes, k=k_values).to(device)
-
-def fit(model, X, target, epochs=1, lr=1e-4):
-    model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = SSDLoss(anchors.to(device), grid_size.to(device))
-    for epoch in range(1, epochs+1):
-        model.train()
-        train_loss_loc, train_loss_cls = [], []
-        optimizer.zero_grad()
-        outputs = model(X)
-        loss = criterion(outputs, target)
-        loss.backward()
-        optimizer.step()
-        train_loss_loc.append(loss.item())
-        print(f"Epoch {epoch}/{epochs} loss {np.mean(train_loss_loc):.5f}")
-
-# Entrenar el modelo
-fit(net, img_tensor, (bb_tensor, label_tensor), epochs=100, lr=1e-3)
+img_tensor = torch.FloatTensor(img / 255.).permute(2,0,1).unsqueeze(0).to(device)
+bb_norm = [AnchorUtils.norm(bb, img.shape[:2]) for bb in bbs]
+bb_tensor = torch.FloatTensor(bb_norm).unsqueeze(0).to(device)
+label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
 
 #%%
+model = SSD(n_classes = len(classes), k=k)
+fit(model, img_tensor, (bb_tensor, label_tensor), epochs=100)
+
+#%%
+
+def predict(model, X):
+    model.eval()
+    with torch.no_grad():
+        X = X.to(device)
+        bbs, labels = model(X)
+        bbs = actn_to_bb(bbs[0], anchors, grid_size)
+    return bbs, torch.max(torch.softmax(labels, axis=2)[0].cpu(), axis=1)  # Asegúrate de que las etiquetas estén en la CPU
+
+bbs, (scores, labels) = predict(model, img_tensor)
+bbs = [AnchorUtils.unnorm(bb.cpu().numpy(), img.shape[:2]) for bb in bbs] 
+# %%
+plot_anns(img, (labels, bbs))
+plt.show()
+#%%
+plot_anns(img, (labels, bbs), bg=0)
+plt.show()
