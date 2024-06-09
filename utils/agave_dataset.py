@@ -1,3 +1,5 @@
+# TODO: linting
+"""Agave HD dataset from RF Universe: https://universe.roboflow.com/agave/agavehd"""
 import os
 import torch
 from torchvision.datasets.vision import VisionDataset
