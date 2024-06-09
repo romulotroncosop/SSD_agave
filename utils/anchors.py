@@ -46,7 +46,7 @@ class AnchorUtils:
         ax.imshow(img)
         labels, bbs = anns
 
-        anchors = AnchorUtils.xyxy2xywh(anchors)
+        anchors = AnchorUtils.xyxy2xywh(anchors).cpu()
         _anchors = np.array([AnchorUtils.unnorm(a, img.shape[:2]) for a in anchors])
         for a in _anchors:
             x, y, w, h = a
