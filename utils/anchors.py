@@ -35,6 +35,8 @@ class AnchorUtils:
                             grid_size.append(np.array([1./s, 1./s]))
                     cnt += 1
             k.append(cnt)
+        anchors = np.array(anchors)  # Convertir la lista de arrays de NumPy a un solo array de NumPy
+        grid_size = np.array(grid_size)  # Convertir la lista de arrays de NumPy a un solo array de NumPy
         return k, torch.tensor(anchors).float(), torch.tensor(grid_size).float()
 
     @staticmethod
@@ -55,10 +57,11 @@ class AnchorUtils:
             x, y, xm, ym = bb
             w, h = xm - x, ym - y
             rect = mpatches.Rectangle((x, y), w, h, fill=False, edgecolor='red', linewidth=2)
-            text = ax.text(x, y - 10, classes[int(lab)], {'color': 'red'})  # Asegúrate de que `lab` sea un índice entero
+            lab = 1  # Asignar siempre la clase 0 (agave) para este caso
+            text = ax.text(x, y - 10, classes[lab], {'color': 'red'})
             text.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
             ax.add_patch(rect)
-        
+
 if __name__ == "__main__":
     bbox = [50, 30, 200, 150]
     shape = (400, 600)

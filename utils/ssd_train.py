@@ -27,20 +27,23 @@ trans = A.Compose([
 ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
 
 # Función de entrenamiento
-def fit(model, X, target, epochs=1, lr=3e-4):
+def fit(model, dataloader, epochs=1, lr=3e-4):
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = SSDLoss(anchors.to(device), grid_size.to(device))
     for epoch in range(1, epochs+1):
         model.train()
         train_loss_loc, train_loss_cls = [], []
-        optimizer.zero_grad()
-        outputs = model(X)
-        loss = criterion(outputs, target)
-        loss.backward()
-        optimizer.step()
-        train_loss_loc.append(loss.item())
-        print(f"Epoch {epoch}/{epochs} loss {np.mean(train_loss_loc):.5f}")
+        for images, targets in dataloader:
+            optimizer.zero_grad()
+            outputs = model(images.to(device))
+            total_loss, loc_loss, clas_loss = criterion(outputs, (targets['boxes'].to(device), targets['labels'].to(device)))
+            total_loss.backward()
+            optimizer.step()
+            train_loss_loc.append(loc_loss.item())
+            train_loss_cls.append(clas_loss.item())
+        
+        print(f"Epoch {epoch}/{epochs} loss {np.mean(train_loss_loc):.5f} (Localization: {np.mean(train_loss_loc):.5f}, Classification: {np.mean(train_loss_cls):.5f})")
 
 if __name__ == "__main__":
     # Inicializar el dataset y el modelo
@@ -48,7 +51,7 @@ if __name__ == "__main__":
     dataset = AgaveDataset(root=root_dir, image_set='train', transform=get_transform(train=True))
     dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
-    # Obtener una muestra de datos
+    # Obtener una muestra de datos y visualizarla
     for images, targets in dataloader:
         break
 
@@ -83,8 +86,8 @@ if __name__ == "__main__":
 
     # Inicializar y entrenar el modelo
     model = SSD(n_classes=len(classes), k=k)
-    fit(model, img_tensor, (bb_tensor, label_tensor), epochs=100)
+    fit(model, dataloader, epochs=100)
 
     # Guardar el modelo
     torch.save(model.state_dict(), 'ssd_model.pth')
-    print(f"modelo guardadon en {'ssd_model.pth'}, con k={k}")
+    print(f"Modelo guardado en 'ssd_model.pth', con k={k}")

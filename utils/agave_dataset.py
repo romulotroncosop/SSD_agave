@@ -1,10 +1,12 @@
-# utils/agave_dataset.py
 import os
 import torch
 from torchvision.datasets.vision import VisionDataset
 from PIL import Image
 import xml.etree.ElementTree as ET
 import torchvision.transforms as T
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 class AgaveDataset(VisionDataset):
     def __init__(self, root, image_set='train', transform=None):
@@ -66,3 +68,27 @@ def get_transform(train):
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
+
+def get_sample(dataset, ix):
+    img, target = dataset[ix]
+    img_np = img.permute(1, 2, 0).numpy() * 255
+    anns = (target['labels'].numpy(), target['boxes'].numpy())
+    return img_np.astype(np.uint8), anns
+
+def to_pil_image(img_tensor):
+    img = img_tensor.mul(255).permute(1, 2, 0).byte().numpy()
+    img = Image.fromarray(img)
+    return img
+
+def show_image(img_tensor, boxes, labels):
+    img = to_pil_image(img_tensor)
+    fig, ax = plt.subplots(1)
+    ax.imshow(img)
+
+    for box in boxes:
+        x, y, xmax, ymax = box
+        w, h = xmax - x, ymax - y
+        rect = patches.Rectangle((x, y), w, h, linewidth=2, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+
+    plt.show()

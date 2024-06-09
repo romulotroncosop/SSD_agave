@@ -64,8 +64,9 @@ class SSD(nn.Module):
         return torch.cat([o1l, o2l, o3l], dim=1), torch.cat([o1c, o2c, o3c], dim=1)
 
 if __name__ == "__main__":
-    classes = ["agave"]  # Single class
-    k = [1, 1, 1]  # Example anchor ratios
-    net = SSD(n_classes=len(classes), k=k)
+    classes = ["background", "agave"]  # Incluye background y agave
+    n_classes = len(classes)  # Esto debería ser 2
+    k = [3, 3, 3]  # Example anchor ratios
+    net = SSD(n_classes=n_classes, k=k)  # Usa n_classes correcto
     output = net(torch.rand((64, 3, 100, 100)))
     print(output[0].shape, output[1].shape)
