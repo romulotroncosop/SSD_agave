@@ -1,5 +1,5 @@
 #%% Load dataset and annotations
-#from utils.agave_dataset import AgaveDataset, get_transform, get_sample, show_image
+
 from utils.voc_dataset import get_sample, plot_anns
 from utils.voc_dataset import classes
 from utils.anchors import AnchorUtils
@@ -17,7 +17,6 @@ import albumentations as A
 idx = 4445
 img_np, anns = get_sample(idx)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
 #  Anchors
 scales = [6, 3, 1]
@@ -75,7 +74,6 @@ print(f"Loss: {loss.item()}")
 #AnchorUtils.plot_anchors(img, (labels_aug, bbs), anchors, classes)
 #plt.show()
 
-
 #%% TODO: fix the tensors, are not in the the same device
 trans = A.Compose([
     A.Resize(100, 100)
@@ -93,6 +91,7 @@ label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
 
 #%%
 model = SSD(n_classes = len(classes), k=k)
+model.to(device)
 fit(model, img_tensor, (bb_tensor, label_tensor), epochs=100)
 
 #%%
