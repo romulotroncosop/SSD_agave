@@ -1,4 +1,9 @@
-#%% Load dataset and annotations
+# TODO: linting
+
+"""
+End to End training and inference on Agave HD dataset.
+"""
+#%%
 from utils.agave_dataset import AgaveDataset, get_transform, get_sample, classes, plot_anns
 from utils.anchors import AnchorUtils
 from utils.ssd_loss import actn_to_bb
@@ -9,10 +14,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch, torchvision
 import albumentations as A
+from pathlib import Path
+from wasabi import Printer
+
+msg = Printer()
 
 # Dataset and annotations
-dataset = AgaveDataset(root='./data/datasets/agaveHD-1', image_set='train', transform=get_transform(train=False))
-idx = 6
+msg.info("Loading dataset and annotations...")
+agave_dataset_path = Path('./data/datasets/agaveHD-1')
+if not agave_dataset_path.exists():
+    msg.fail("Dataset not found. Please download the dataset first.")
+    msg.info("You can download the dataset running: python -m utils.agave_dataset, and move the data to ./data/datasets/")
+    exit()
+dataset = AgaveDataset(root=agave_dataset_path, image_set='train', transform=get_transform(train=False))
+idx = 50 # Define a sample index
 img_np, anns = get_sample(dataset, idx)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -28,19 +43,20 @@ k, anchors, grid_size = AnchorUtils.generate_anchors(scales, centers, sizes)
 anchors = anchors.to(device)
 grid_size = grid_size.to(device)
 
-AnchorUtils.plot_anchors(img_np, anns, anchors, ["background", "agave"])
+AnchorUtils.plot_anchors(img_np, anns, anchors, classes)
 plt.show()
-print(f"Anchors: {len(anchors)}, k: {k}")
+msg.info(f"Anchors: {len(anchors)}, k: {k}")
 
 # Model
-n_classes = 2  # Para 'background' y 'agave'
+n_classes = len(classes)  #  [background, agave]
 k_values = [3, 3, 3]
-
+#%%
+msg.info("SSD criterion and Model...")
 net = SSD(n_classes=n_classes, k=k_values).to(device)
 input_tensor = torch.rand((64, 3, 100, 100)).to(device)
 
 output = net(input_tensor)
-print(output[0].shape, output[1].shape) # -> target: torch.Size([64, 138, 4]) torch.Size([64, 138, 2])
+msg.info(output[0].shape, output[1].shape) # -> target: torch.Size([64, 138, 4]) torch.Size([64, 138, 2])
 
 
 # Loss (SSDLoss)
@@ -70,7 +86,6 @@ bb_tensor = torch.FloatTensor(bb_norm).unsqueeze(0).to(device)
 label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
 
 # Training the model
-
 model = SSD(n_classes = len(classes), k=k)
 model.to(device)
 fit(net, img_tensor, (bb_tensor, label_tensor), epochs=500)
@@ -94,7 +109,6 @@ plot_anns(img, (labels, bbs), bg=0)
 plt.show()
 #%%
 bbs, (scores, labels) = predict(model, img_tensor)
-
 # Filtrar los valores
 mask = labels > 0
 bbs = bbs[mask]
