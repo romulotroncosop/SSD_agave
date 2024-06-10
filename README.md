@@ -67,7 +67,7 @@ Finalmente el entrenamiento e inerencia se corren con el comando
     plot_anns(img_np, anns)
     plt.show()
 ```
-![alt agave dataset](data\images\agave.png)
+![alt text](data/images/agave.png)
 
 ### Generar Anchors
 ```python
