@@ -108,7 +108,9 @@ plt.show()
 plot_anns(img, (labels, bbs), bg=0)
 plt.show()
 #%%
+#%%
 bbs, (scores, labels) = predict(model, img_tensor)
+
 # Filtrar los valores
 mask = labels > 0
 bbs = bbs[mask]
@@ -120,10 +122,13 @@ bbs = bbs.to(device)
 labels = labels.to(device)
 scores = scores.to(device)
 
+# Aplicar Non-Maximum Suppression (NMS)
 nms_ixs = torchvision.ops.nms(bbs, scores, iou_threshold=0.8)
 
-#%%
+# Obtener los resultados después de NMS
 bbs, labels = bbs[nms_ixs], labels[nms_ixs]
-bbs = [AnchorUtils.unnorm(bb.cpu(), img.shape[:2]) for bb in bbs]  # Mueve los tensores a la CPU antes de la conversión
+bbs = [AnchorUtils.unnorm(bb.cpu().numpy(), img.shape[:2]) for bb in bbs]  # Mueve los tensores a la CPU antes de la conversión
+
+# Graficar las anotaciones
 plot_anns(img, (labels.cpu(), bbs))  # Mueve las etiquetas a la CPU también
 plt.show()
