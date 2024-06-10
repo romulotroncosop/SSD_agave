@@ -4,9 +4,41 @@ Este proyecto implementa un modelo de detección de objetos Single Shot Multibox
 
 ## Instalación
 
-Primero, asegúrate de tener instalado Python 3.7 o superior. Luego, instala las dependencias necesarias:
+Clona este repositorio:
+```bash
+    git clone https://github.com/romulotroncosop/SSD_agave.git
+```
+Asegúrate de tener instalado Python 3.11 o superior. Luego se sugiere instalar un entorno virtual
+```bash
+    pip install pipenv
+    pipenv shell
+```
+Luego, instala las dependencias necesarias si se desea prescindir que el PipFile ligado al entorno virutal:
 
-    pip install torch torchvision albumentations matplotlib
+```bash
+    pip install -r requirements.txt
+```
+Obtener el API key de Roboflow para descargar el dataset, despues crear un archivo llamado .env con el contenido
+
+```python
+    ROBOFLOW_API_KEY=N8s0v... # Tu api key de roboflow va aquí
+    PYTHONPATH=.
+```
+
+Descargar el dataset 
+```bash
+    python -m utils.agave_dataset
+```
+
+Manualmente movel el dataset de /agaveHD-1 -> /data/datasets/agaveHD-1 o 
+```bash
+   mv agaveHD-1 data/datasets
+```
+Finalmente el entrenamiento e inerencia se corren con el comando
+
+```bash
+     python ssd_agave.py
+```
 
 ## Estructura del Proyecto
 
@@ -21,7 +53,7 @@ Primero, asegúrate de tener instalado Python 3.7 o superior. Luego, instala las
 ## Uso
 
 ### Cargar y Visualizar el Dataset
-
+```python
     from utils.voc_dataset import get_sample, plot_anns
     from utils.voc_dataset import classes
     from utils.anchors import AnchorUtils
@@ -34,11 +66,11 @@ Primero, asegúrate de tener instalado Python 3.7 o superior. Luego, instala las
     # Visualizar la muestra
     plot_anns(img_np, anns)
     plt.show()
-
-    ![alt text](image.png)
+```
+![alt agave dataset](data\images\agave.png)
 
 ### Generar Anchors
-
+```python
     scales = [6, 3, 1]
     centers = [(0.5, 0.5)]
     size_scales = [0.5]
@@ -51,9 +83,12 @@ Primero, asegúrate de tener instalado Python 3.7 o superior. Luego, instala las
 
     AnchorUtils.plot_anchors(img_np, anns, anchors, classes)
     plt.show()
+```
+![alt agave dataset](data/images/proposal.png)
+
 
 ### Definir el Modelo SSD
-
+```python
     from utils.ssd_model import SSD
 
     n_classes = len(classes)
@@ -65,9 +100,11 @@ Primero, asegúrate de tener instalado Python 3.7 o superior. Luego, instala las
 
     output = model(input_tensor)
     print(output[0].shape, output[1].shape)  # Esperado: torch.Size([64, 138, 4]) torch.Size([64, 138, 2])
+```
+![alt agave dataset](data/images/ssd_arch.png)
 
 ### Calcular la Pérdida
-
+```python
     from utils.ssd_loss import SSDLoss
 
     criterion = SSDLoss(
@@ -98,9 +135,10 @@ Primero, asegúrate de tener instalado Python 3.7 o superior. Luego, instala las
     label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
 
     fit(model, img_tensor, (bb_tensor, label_tensor), epochs=100)
-
-### Realizar Predicciones
-
+```
+![alt text](data/images/predictions.png)
+### Realizar Predicciones y Limpiar Fondo
+```python
     from utils.ssd_loss import actn_to_bb
     import torchvision
 
@@ -133,7 +171,8 @@ Primero, asegúrate de tener instalado Python 3.7 o superior. Luego, instala las
     bbs = [AnchorUtils.unnorm(bb.cpu(), img.shape[:2]) for bb in bbs]
     plot_anns(img, (labels.cpu(), bbs))
     plt.show()
-
+```
+![alt text](data/images/cleaned.png)
 ## Notas
 
 - Este proyecto asume que tienes un conjunto de datos etiquetado con la clase "agave" en formato Pascal VOC.
