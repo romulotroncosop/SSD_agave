@@ -23,4 +23,7 @@ bower_components/
 # dataset files 
 data/datasets/**
 data/**
+
+# exceptions for images
 !data/images/
+!data/images/**
