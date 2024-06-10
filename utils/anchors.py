@@ -1,3 +1,4 @@
+#  TODO: linting
 """Anchor box utilities."""
 import numpy as np
 import torch
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     sizes = [(s*a[0], s*a[1]) for s in size_scales for a in aspect_ratios]
     k, anchors, grid_size = AnchorUtils.generate_anchors(scales, centers, sizes)
 
-    classes = ["agave"]
+    classes = ["background","agave"]
 
     AnchorUtils.plot_anchors(img_np, anns, anchors, classes)
     plt.show()

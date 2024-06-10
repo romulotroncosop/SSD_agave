@@ -1,3 +1,7 @@
+# TODO: linting
+"""
+Utilities for SSD loss function.
+"""
 import torch
 import torch.nn as nn
 import torchvision

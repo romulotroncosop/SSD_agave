@@ -10,7 +10,7 @@ from utils.ssd_model import SSD
 from utils.ssd_loss import SSDLoss
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
+import torch, torchvision
 import albumentations as A
 
 # Dataset and annotations
@@ -92,7 +92,7 @@ label_tensor = torch.tensor(labels).long().unsqueeze(0).to(device)
 #%%
 model = SSD(n_classes = len(classes), k=k)
 model.to(device)
-fit(model, img_tensor, (bb_tensor, label_tensor), epochs=100)
+fit(model, img_tensor, (bb_tensor, label_tensor), epochs=250)
 
 #%%
 
@@ -111,4 +111,37 @@ plot_anns(img, (labels, bbs))
 plt.show()
 #%%
 plot_anns(img, (labels, bbs), bg=0)
+plt.show()
+
+#%%
+def to_device(obj, device):
+    if isinstance(obj, torch.Tensor):
+        return obj.to(device)
+    elif isinstance(obj, list):
+        return [to_device(x, device) for x in obj]
+    elif isinstance(obj, tuple):
+        return tuple(to_device(x, device) for x in obj)
+    elif isinstance(obj, dict):
+        return {k: to_device(v, device) for k, v in obj.items()}
+    else:
+        return obj
+
+# Aplicar la función a los tensores
+bbs, (scores, labels) = to_device(predict(model, img_tensor), device)
+
+# Filtrar los valores que no son fondo (background)
+mask = labels > 0
+bbs = bbs[mask]
+scores = scores[mask]
+labels = labels[mask]
+
+# Aplicar Non-Maximum Suppression (NMS)
+nms_ixs = torchvision.ops.nms(bbs, scores, iou_threshold=0.4)
+
+# Obtener los resultados después de NMS
+bbs, labels, scores = bbs[nms_ixs], labels[nms_ixs], scores[nms_ixs]
+bbs = [AnchorUtils.unnorm(bb.cpu().numpy(), img.shape[:2]) for bb in bbs]
+
+# Graficar las anotaciones
+plot_anns(img, (labels.cpu(), bbs))
 plt.show()

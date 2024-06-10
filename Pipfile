@@ -8,6 +8,7 @@ python-dotenv = "*"
 wasabi = "*"
 roboflow = "*"
 albumentations = "*"
+pylint = "*"
 
 [dev-packages]
 ipykernel = "*"
