@@ -123,7 +123,7 @@ labels = labels.to(device)
 scores = scores.to(device)
 
 # Aplicar Non-Maximum Suppression (NMS)
-nms_ixs = torchvision.ops.nms(bbs, scores, iou_threshold=0.8)
+nms_ixs = torchvision.ops.nms(bbs, scores, iou_threshold=0.4)
 
 # Obtener los resultados después de NMS
 bbs, labels = bbs[nms_ixs], labels[nms_ixs]
